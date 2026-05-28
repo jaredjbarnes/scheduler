@@ -1,5 +1,5 @@
-import type { DaysOfYearRule } from "../types";
-import { computeSpanEnd, utcToWallParts, wallTimeToUtc } from "../tz";
+import type { DaysOfYearRule, Disambiguation } from "../types";
+import { computeSpanEnd, isNonexistentWallTime, utcToWallParts, wallTimeToUtc } from "../tz";
 import {
   MAX_OCCURRENCES_PER_GENERATE,
   type Occurrence,
@@ -14,7 +14,8 @@ export function generateDaysOfYear(
   rule: DaysOfYearRule,
   tz: string | undefined,
   windowStart: number,
-  windowEnd: number
+  windowEnd: number,
+  disambiguation: Disambiguation = "compatible"
 ): Occurrence[] {
   if (rule.yearInterval <= 0) {
     throw new Error(`DaysOfYearRule.yearInterval must be > 0 (got ${rule.yearInterval})`);
@@ -54,7 +55,13 @@ export function generateDaysOfYear(
 
       const month = probe.getUTCMonth();
       const day = probe.getUTCDate();
-      const occStart = wallTimeToUtc(year, month, day, rule.timeOfDay, tz);
+      if (
+        disambiguation === "skip" &&
+        isNonexistentWallTime(year, month, day, rule.timeOfDay, tz)
+      ) {
+        continue;
+      }
+      const occStart = wallTimeToUtc(year, month, day, rule.timeOfDay, tz, disambiguation);
       const occEnd = computeSpanEnd(occStart, rule.timeSpan, tz);
 
       if (occStart < rule.seriesStart) continue;

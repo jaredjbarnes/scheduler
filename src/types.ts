@@ -64,7 +64,9 @@ export enum Month {
 //   Numerical / date-indexed — Yearly, DaysOfMonth, DaysOfYear
 //     "Which numbered day?" (date-anchored)
 //
-// Plus Once (single point) and Anchored (fixed-interval, tz-independent).
+// Plus two single-occurrence kinds — Instant (one absolute UTC point) and
+// LocalDateTime (one wall-clock point, DST-resolved in the template tz) — and
+// Anchored (fixed-interval stepping from an absolute anchor).
 
 // How long an occurrence lasts. Two flavors:
 //   { type: "duration", ms }   — fixed real-elapsed time (UTC ms). An 8h
@@ -80,14 +82,18 @@ export enum Month {
 //
 // hourSpan accepts fractional hours (e.g. 7.5 = 7h30m).
 //
-// On rules with no timezone (Once, Anchored), hourSpan is treated as
-// `hours * 3_600_000` ms (no DST math possible without a tz). When omitted
-// from any rule, defaults to { type: "duration", ms: 1 } so half-open
-// window intersection still emits cron-fire events.
+// When the template has no timezone, hourSpan collapses to
+// `hours * 3_600_000` ms (no wall clock to flex against); with a timezone it
+// flexes across DST. This holds for EVERY rule kind, including Instant and
+// Anchored — their starts are absolute, but their spans still flex if a tz is
+// set. When omitted from any rule, timeSpan defaults to
+// { type: "duration", ms: 1 } so half-open window intersection still emits
+// cron-fire events.
 export type TimeSpan = { type: "duration"; ms: number } | { type: "hourSpan"; hours: number };
 
 export type RecurrenceRule =
-  | OnceRule
+  | InstantRule
+  | LocalDateTimeRule
   | AnchoredRule
   | DaysOfWeekRule
   | WeeksOfMonthRule
@@ -96,14 +102,44 @@ export type RecurrenceRule =
   | DaysOfMonthRule
   | DaysOfYearRule;
 
-export interface OnceRule {
-  kind: "once";
-  // Absolute UTC epoch ms. Timezone on the template is ignored for "once".
+export interface InstantRule {
+  kind: "instant";
+  // Absolute UTC epoch ms — a single fixed point on the timeline. The template
+  // timezone does NOT affect this start: an instant has no wall-clock
+  // ambiguity to resolve, so there is no DST math to do on it. For a one-off
+  // expressed in wall-clock terms ("09:00 on 8 Mar 2026 in America/Denver"),
+  // use LocalDateTimeRule instead.
   startOn: number;
   // How long the occurrence lasts. Defaults to { type: "duration", ms: 1 }.
   // (Half-open intersection means a zero-length event wouldn't match any
   // window — we forbid that so cron-fire events still emit correctly.)
-  // hourSpan on Once is treated as hours*3_600_000 (no tz to flex against).
+  // An hourSpan still flexes across DST when the template carries a timezone;
+  // with no timezone it collapses to hours*3_600_000.
+  timeSpan?: TimeSpan;
+}
+
+// A single occurrence expressed in WALL-CLOCK terms, resolved through the
+// template timezone (DST-aware). Use this when a human picked a local date and
+// time and you want the engine to resolve it to an instant — the inverse of
+// InstantRule, which takes an already-absolute instant.
+//
+// Spring-forward gap / fall-back ambiguity on the start resolve to the earlier
+// UTC instant, identical to every other wall-clock rule (see tz.ts). When the
+// template has no timezone, the fields are interpreted as UTC.
+//
+// `day` is clamped to the month length (Feb 30 → Feb 28/29, Apr 31 → Apr 30),
+// matching YearlyRule.
+export interface LocalDateTimeRule {
+  kind: "localDateTime";
+  year: number;
+  month: Month; // 0-indexed: 0 = January
+  day: number; // 1..31, clamped to month length
+  // Time-of-day in ms since wall-clock midnight (0 .. 86_400_000), interpreted
+  // in the template's timezone.
+  timeOfDay: number;
+  // How long the occurrence lasts. Defaults to { type: "duration", ms: 1 }.
+  // hourSpan flexes across DST (template tz); collapses to hours*3_600_000
+  // when the template has no timezone.
   timeSpan?: TimeSpan;
 }
 
@@ -266,15 +302,43 @@ export interface DaysOfYearRule {
   count?: number | null;
 }
 
+// How to resolve a wall-clock time that is nonexistent (spring-forward gap)
+// or ambiguous (fall-back overlap) in the template timezone. Mirrors the
+// Temporal proposal's `disambiguation` option, plus a recurrence-friendly
+// "skip".
+//
+//   "compatible" (default) — gap → the LATER instant (clock moves forward past
+//                            the gap); overlap → the EARLIER instant. Matches
+//                            Temporal, the JS Date constructor, and most
+//                            operating systems.
+//   "earlier"              — gap and overlap both resolve to the earlier
+//                            instant. (This was the engine's behavior before
+//                            disambiguation was configurable.)
+//   "later"                — gap and overlap both resolve to the later instant.
+//   "reject"               — throw on a nonexistent or ambiguous wall time.
+//   "skip"                 — drop occurrences whose wall time is nonexistent (in
+//                            a gap), keeping the rest of the series. Overlaps
+//                            still resolve (to the earlier instant); only gaps
+//                            are skipped.
+export type Disambiguation = "compatible" | "earlier" | "later" | "reject" | "skip";
+
 // A scheduled item the consumer cares about. The payload is opaque to the
 // scheduler; the only contract is that it carries a `type` string so a
 // dispatcher (or downstream consumer) can route on it.
 export interface ScheduleTemplate<TPayload extends { type: string }> {
   id: string;
   rule: RecurrenceRule;
-  // IANA timezone, e.g. "America/Denver". When omitted, the scheduler treats
-  // wall-clock fields (timeOfDay, day-of-month) as UTC.
-  timezone?: string;
+  // IANA timezone, e.g. "America/Denver". REQUIRED and validated at write time
+  // (Scheduler.add/update reject unknown zones). Wall-clock rule fields
+  // (timeOfDay, day-of-month, ...) are interpreted in this zone; use "UTC" for
+  // zone-free scheduling. The absolute rules (instant, anchored) ignore it —
+  // pass "UTC" there by convention.
+  timezone: string;
+  // Policy for resolving wall-clock times that fall in a DST gap or overlap.
+  // Defaults to "compatible". See Disambiguation. Has no effect without a
+  // timezone (UTC has no DST) or on absolute rules (instant, anchored), whose
+  // starts carry no wall-clock ambiguity.
+  disambiguation?: Disambiguation;
   payload: TPayload;
 }
 

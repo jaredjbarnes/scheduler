@@ -7,7 +7,8 @@ export {
   Day,
   Month,
   type RecurrenceRule,
-  type OnceRule,
+  type InstantRule,
+  type LocalDateTimeRule,
   type AnchoredRule,
   type DaysOfWeekRule,
   type WeeksOfMonthRule,
@@ -19,4 +20,5 @@ export {
   type Alteration,
   type ScheduledEvent,
   type TimeSpan,
+  type Disambiguation,
 } from "./types";

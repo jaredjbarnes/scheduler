@@ -1,5 +1,11 @@
-import type { YearlyRule } from "../types";
-import { computeSpanEnd, monthLength, utcToWallParts, wallTimeToUtc } from "../tz";
+import type { Disambiguation, YearlyRule } from "../types";
+import {
+  computeSpanEnd,
+  isNonexistentWallTime,
+  monthLength,
+  utcToWallParts,
+  wallTimeToUtc,
+} from "../tz";
 import {
   MAX_OCCURRENCES_PER_GENERATE,
   type Occurrence,
@@ -13,7 +19,8 @@ export function generateYearly(
   rule: YearlyRule,
   tz: string | undefined,
   windowStart: number,
-  windowEnd: number
+  windowEnd: number,
+  disambiguation: Disambiguation = "compatible"
 ): Occurrence[] {
   if (rule.yearInterval <= 0) {
     throw new Error(`YearlyRule.yearInterval must be > 0 (got ${rule.yearInterval})`);
@@ -40,7 +47,13 @@ export function generateYearly(
 
   for (let year = startYear; year <= endYear; year += rule.yearInterval) {
     const day = Math.min(rule.day, monthLength(year, rule.month));
-    const occStart = wallTimeToUtc(year, rule.month, day, rule.timeOfDay, tz);
+    if (
+      disambiguation === "skip" &&
+      isNonexistentWallTime(year, rule.month, day, rule.timeOfDay, tz)
+    ) {
+      continue;
+    }
+    const occStart = wallTimeToUtc(year, rule.month, day, rule.timeOfDay, tz, disambiguation);
     const occEnd = computeSpanEnd(occStart, rule.timeSpan, tz);
 
     if (occStart < rule.seriesStart) continue;

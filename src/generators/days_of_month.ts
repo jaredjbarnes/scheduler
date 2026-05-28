@@ -1,5 +1,11 @@
-import type { DaysOfMonthRule } from "../types";
-import { computeSpanEnd, monthLength, utcToWallParts, wallTimeToUtc } from "../tz";
+import type { DaysOfMonthRule, Disambiguation } from "../types";
+import {
+  computeSpanEnd,
+  isNonexistentWallTime,
+  monthLength,
+  utcToWallParts,
+  wallTimeToUtc,
+} from "../tz";
 import {
   MAX_OCCURRENCES_PER_GENERATE,
   type Occurrence,
@@ -13,7 +19,8 @@ export function generateDaysOfMonth(
   rule: DaysOfMonthRule,
   tz: string | undefined,
   windowStart: number,
-  windowEnd: number
+  windowEnd: number,
+  disambiguation: Disambiguation = "compatible"
 ): Occurrence[] {
   if (rule.yearInterval <= 0) {
     throw new Error(`DaysOfMonthRule.yearInterval must be > 0 (got ${rule.yearInterval})`);
@@ -59,7 +66,13 @@ export function generateDaysOfMonth(
       // Dedup clamped days so day-31 + day-30 in April don't both emit Apr 30.
       const clampedDays = [...new Set(daysOfMonth.map((d) => Math.min(d, len)))];
       for (const day of clampedDays) {
-        const occStart = wallTimeToUtc(year, month, day, rule.timeOfDay, tz);
+        if (
+          disambiguation === "skip" &&
+          isNonexistentWallTime(year, month, day, rule.timeOfDay, tz)
+        ) {
+          continue;
+        }
+        const occStart = wallTimeToUtc(year, month, day, rule.timeOfDay, tz, disambiguation);
         const occEnd = computeSpanEnd(occStart, rule.timeSpan, tz);
 
         if (occStart < rule.seriesStart) continue;

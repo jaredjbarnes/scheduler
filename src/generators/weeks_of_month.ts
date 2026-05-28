@@ -1,5 +1,12 @@
-import type { WeeksOfMonthRule } from "../types";
-import { addMonthsInTz, computeSpanEnd, monthLength, utcToWallParts, wallTimeToUtc } from "../tz";
+import type { Disambiguation, WeeksOfMonthRule } from "../types";
+import {
+  addMonthsInTz,
+  computeSpanEnd,
+  isNonexistentWallTime,
+  monthLength,
+  utcToWallParts,
+  wallTimeToUtc,
+} from "../tz";
 import {
   MAX_OCCURRENCES_PER_GENERATE,
   type Occurrence,
@@ -14,7 +21,8 @@ export function generateWeeksOfMonth(
   rule: WeeksOfMonthRule,
   tz: string | undefined,
   windowStart: number,
-  windowEnd: number
+  windowEnd: number,
+  disambiguation: Disambiguation = "compatible"
 ): Occurrence[] {
   if (rule.monthInterval <= 0) {
     throw new Error(`WeeksOfMonthRule.monthInterval must be > 0 (got ${rule.monthInterval})`);
@@ -59,7 +67,20 @@ export function generateWeeksOfMonth(
         const targetDay = _nthWeekdayOfMonth(mp.year, mp.month, dow, week);
         if (targetDay == null) continue; // e.g. 5th Friday in a 4-Friday month
 
-        const occStart = wallTimeToUtc(mp.year, mp.month, targetDay, rule.timeOfDay, tz);
+        if (
+          disambiguation === "skip" &&
+          isNonexistentWallTime(mp.year, mp.month, targetDay, rule.timeOfDay, tz)
+        ) {
+          continue;
+        }
+        const occStart = wallTimeToUtc(
+          mp.year,
+          mp.month,
+          targetDay,
+          rule.timeOfDay,
+          tz,
+          disambiguation
+        );
         const occEnd = computeSpanEnd(occStart, rule.timeSpan, tz);
 
         if (occStart < rule.seriesStart) continue;

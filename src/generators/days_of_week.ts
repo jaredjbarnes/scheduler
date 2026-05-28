@@ -1,5 +1,12 @@
-import type { DaysOfWeekRule } from "../types";
-import { addDaysInTz, computeSpanEnd, dayOfWeekInTz, utcToWallParts, wallTimeToUtc } from "../tz";
+import type { DaysOfWeekRule, Disambiguation } from "../types";
+import {
+  addDaysInTz,
+  computeSpanEnd,
+  dayOfWeekInTz,
+  isNonexistentWallTime,
+  utcToWallParts,
+  wallTimeToUtc,
+} from "../tz";
 import {
   MAX_OCCURRENCES_PER_GENERATE,
   type Occurrence,
@@ -14,7 +21,8 @@ export function generateDaysOfWeek(
   rule: DaysOfWeekRule,
   tz: string | undefined,
   windowStart: number,
-  windowEnd: number
+  windowEnd: number,
+  disambiguation: Disambiguation = "compatible"
 ): Occurrence[] {
   if (rule.weekInterval <= 0) {
     throw new Error(`DaysOfWeekRule.weekInterval must be > 0 (got ${rule.weekInterval})`);
@@ -54,12 +62,19 @@ export function generateDaysOfWeek(
       // Compute the day-of-week within this week in tz wall time.
       const dayUtc = addDaysInTz(weekStart, dow, tz);
       const dayParts = utcToWallParts(dayUtc, tz);
+      if (
+        disambiguation === "skip" &&
+        isNonexistentWallTime(dayParts.year, dayParts.month, dayParts.day, rule.timeOfDay, tz)
+      ) {
+        continue;
+      }
       const occStart = wallTimeToUtc(
         dayParts.year,
         dayParts.month,
         dayParts.day,
         rule.timeOfDay,
-        tz
+        tz,
+        disambiguation
       );
       const occEnd = computeSpanEnd(occStart, rule.timeSpan, tz);
 

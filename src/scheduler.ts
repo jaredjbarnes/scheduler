@@ -4,8 +4,9 @@ import { generateAnchored } from "./generators/anchored";
 import { generateDaysOfMonth } from "./generators/days_of_month";
 import { generateDaysOfWeek } from "./generators/days_of_week";
 import { generateDaysOfYear } from "./generators/days_of_year";
+import { generateInstant } from "./generators/instant";
+import { generateLocalDateTime } from "./generators/local_date_time";
 import { generateMonthsOfYear } from "./generators/months_of_year";
-import { generateOnce } from "./generators/once";
 import type { Occurrence } from "./generators/types";
 import { generateWeeksOfMonth } from "./generators/weeks_of_month";
 import { generateYearly } from "./generators/yearly";
@@ -13,11 +14,13 @@ import { assignOccurrenceKeys } from "./occurrence_key";
 import type { SchedulerPort } from "./port";
 import type {
   Alteration,
+  Disambiguation,
   RecurrenceRule,
   ScheduleTemplate,
   ScheduledEvent,
   TimeSpan,
 } from "./types";
+import { isValidTimeZone } from "./tz";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 // Search horizon for next() / nextDue() before giving up. Five years covers
@@ -126,6 +129,8 @@ export class Scheduler<TPayload extends { type: string }> {
 
   async add(template: ScheduleTemplate<TPayload>): Promise<void> {
     validateRule(template.rule);
+    _validateTimezone(template.timezone);
+    _validateDisambiguation(template.disambiguation);
     const normalized: ScheduleTemplate<TPayload> = {
       ...template,
       rule: _normalizeRule(template.rule),
@@ -148,6 +153,8 @@ export class Scheduler<TPayload extends { type: string }> {
       id: delta.id,
     };
     validateRule(merged.rule);
+    _validateTimezone(merged.timezone);
+    _validateDisambiguation(merged.disambiguation);
     const updated: ScheduleTemplate<TPayload> = {
       ...merged,
       rule: _normalizeRule(merged.rule),
@@ -213,31 +220,37 @@ export class Scheduler<TPayload extends { type: string }> {
 
   private _generateKeyed(tpl: ScheduleTemplate<TPayload>, windowStart: number, windowEnd: number) {
     const tz = tpl.timezone;
+    const dis = tpl.disambiguation ?? "compatible";
     let occurrences: Occurrence[];
     switch (tpl.rule.kind) {
-      case "once":
-        occurrences = generateOnce(tpl.rule, tz, windowStart, windowEnd);
+      case "instant":
+        // Absolute start — no wall-clock ambiguity, disambiguation N/A.
+        occurrences = generateInstant(tpl.rule, tz, windowStart, windowEnd);
+        break;
+      case "localDateTime":
+        occurrences = generateLocalDateTime(tpl.rule, tz, windowStart, windowEnd, dis);
         break;
       case "anchored":
+        // Absolute stepping — no wall-clock ambiguity, disambiguation N/A.
         occurrences = generateAnchored(tpl.rule, tz, windowStart, windowEnd);
         break;
       case "daysOfWeek":
-        occurrences = generateDaysOfWeek(tpl.rule, tz, windowStart, windowEnd);
+        occurrences = generateDaysOfWeek(tpl.rule, tz, windowStart, windowEnd, dis);
         break;
       case "weeksOfMonth":
-        occurrences = generateWeeksOfMonth(tpl.rule, tz, windowStart, windowEnd);
+        occurrences = generateWeeksOfMonth(tpl.rule, tz, windowStart, windowEnd, dis);
         break;
       case "monthsOfYear":
-        occurrences = generateMonthsOfYear(tpl.rule, tz, windowStart, windowEnd);
+        occurrences = generateMonthsOfYear(tpl.rule, tz, windowStart, windowEnd, dis);
         break;
       case "yearly":
-        occurrences = generateYearly(tpl.rule, tz, windowStart, windowEnd);
+        occurrences = generateYearly(tpl.rule, tz, windowStart, windowEnd, dis);
         break;
       case "daysOfMonth":
-        occurrences = generateDaysOfMonth(tpl.rule, tz, windowStart, windowEnd);
+        occurrences = generateDaysOfMonth(tpl.rule, tz, windowStart, windowEnd, dis);
         break;
       case "daysOfYear":
-        occurrences = generateDaysOfYear(tpl.rule, tz, windowStart, windowEnd);
+        occurrences = generateDaysOfYear(tpl.rule, tz, windowStart, windowEnd, dis);
         break;
       default: {
         // Exhaustiveness guard — adding a new kind without handling it here
@@ -266,7 +279,18 @@ export class Scheduler<TPayload extends { type: string }> {
 
 export function validateRule(rule: RecurrenceRule): void {
   switch (rule.kind) {
-    case "once":
+    case "instant":
+      _validateTimeSpan(rule.timeSpan);
+      return;
+    case "localDateTime":
+      if (!Number.isInteger(rule.year)) {
+        throw new Error("LocalDateTimeRule.year must be an integer");
+      }
+      if (rule.month < 0 || rule.month > 11) {
+        throw new Error("LocalDateTimeRule.month must be in 0..11");
+      }
+      if (rule.day < 1 || rule.day > 31) throw new Error("LocalDateTimeRule.day must be in 1..31");
+      _validateTimeOfDay(rule.timeOfDay);
       _validateTimeSpan(rule.timeSpan);
       return;
     case "anchored":
@@ -390,6 +414,32 @@ function _validateTimeSpan(span: TimeSpan | undefined): void {
 function _normalizeRule(rule: RecurrenceRule): RecurrenceRule {
   if (rule.timeSpan != null) return rule;
   return { ...rule, timeSpan: { type: "duration", ms: 1 } };
+}
+
+function _validateTimezone(tz: string): void {
+  if (typeof tz !== "string" || tz.length === 0) {
+    throw new Error("ScheduleTemplate.timezone is required (use 'UTC' for zone-free scheduling)");
+  }
+  if (!isValidTimeZone(tz)) {
+    throw new Error(`Unknown timezone '${tz}' (expected an IANA zone name or 'UTC')`);
+  }
+}
+
+const _DISAMBIGUATIONS: readonly Disambiguation[] = [
+  "compatible",
+  "earlier",
+  "later",
+  "reject",
+  "skip",
+];
+
+function _validateDisambiguation(d: Disambiguation | undefined): void {
+  if (d == null) return;
+  if (!_DISAMBIGUATIONS.includes(d)) {
+    throw new Error(
+      `Unknown disambiguation '${d}' (expected one of ${_DISAMBIGUATIONS.join(", ")})`
+    );
+  }
 }
 
 function _validateTimeOfDay(ms: number): void {

@@ -78,17 +78,42 @@ describe("tz — DST boundaries", () => {
   // 02:30 wall - (-6h) = 08:30 UTC. So we resolve to the EARLIER UTC instant
   // by using the POST-transition (smaller magnitude) offset. This is the
   // Luxon / date-fns-tz default for spring-forward.
-  test("spring forward gap: non-existent wall resolves with post-transition offset", () => {
+  // Default disambiguation is now "compatible": a spring-forward gap moves
+  // FORWARD to the later instant. 02:30 (nonexistent) → 09:30 UTC (i.e. the
+  // clock jumps to 03:30 MDT). "earlier" recovers the old 08:30 UTC behavior.
+  test("spring forward gap: default (compatible) resolves to the later instant", () => {
     const utc = wallTimeToUtc(2025, 2, 9, 2 * 3_600_000 + 30 * 60_000, "America/Denver");
-    expect(new Date(utc).toISOString()).toBe("2025-03-09T08:30:00.000Z");
+    expect(new Date(utc).toISOString()).toBe("2025-03-09T09:30:00.000Z");
+  });
+
+  test("spring forward gap: disambiguation policies pick gap direction", () => {
+    const wall = 2 * 3_600_000 + 30 * 60_000;
+    const earlier = wallTimeToUtc(2025, 2, 9, wall, "America/Denver", "earlier");
+    const later = wallTimeToUtc(2025, 2, 9, wall, "America/Denver", "later");
+    const compatible = wallTimeToUtc(2025, 2, 9, wall, "America/Denver", "compatible");
+    expect(new Date(earlier).toISOString()).toBe("2025-03-09T08:30:00.000Z");
+    expect(new Date(later).toISOString()).toBe("2025-03-09T09:30:00.000Z");
+    expect(compatible).toBe(later);
+    expect(() => wallTimeToUtc(2025, 2, 9, wall, "America/Denver", "reject")).toThrow(/gap/);
   });
 
   // Fall back: 2025-11-02, America/Denver. Clock falls 02:00 MDT → 01:00 MST.
   // 01:30 wall is ambiguous. We resolve to the EARLIER instant: 07:30 UTC
   // (the first occurrence, while still on MDT), not 08:30 UTC.
-  test("fall back ambiguous wall time resolves to earlier instant", () => {
+  test("fall back ambiguous wall time resolves to earlier instant (compatible default)", () => {
     const utc = wallTimeToUtc(2025, 10, 2, 1 * 3_600_000 + 30 * 60_000, "America/Denver");
     expect(new Date(utc).toISOString()).toBe("2025-11-02T07:30:00.000Z");
+  });
+
+  test("fall back overlap: disambiguation policies pick which occurrence", () => {
+    const wall = 1 * 3_600_000 + 30 * 60_000;
+    const earlier = wallTimeToUtc(2025, 10, 2, wall, "America/Denver", "earlier");
+    const later = wallTimeToUtc(2025, 10, 2, wall, "America/Denver", "later");
+    expect(new Date(earlier).toISOString()).toBe("2025-11-02T07:30:00.000Z");
+    expect(new Date(later).toISOString()).toBe("2025-11-02T08:30:00.000Z");
+    // "compatible" picks the earlier occurrence for an overlap.
+    expect(wallTimeToUtc(2025, 10, 2, wall, "America/Denver", "compatible")).toBe(earlier);
+    expect(() => wallTimeToUtc(2025, 10, 2, wall, "America/Denver", "reject")).toThrow(/overlap/);
   });
 
   // Same wall-clock time, two different UTCs across spring forward.

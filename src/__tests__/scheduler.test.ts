@@ -21,8 +21,9 @@ describe("Scheduler — list across mixed rule kinds", () => {
     const { scheduler } = makeScheduler();
     await scheduler.add({
       id: "once-1",
+      timezone: "UTC",
       rule: {
-        kind: "once",
+        kind: "instant",
         startOn: Date.UTC(2026, 4, 11, 14),
         timeSpan: { type: "duration", ms: HOUR },
       },
@@ -253,8 +254,9 @@ describe("Scheduler — next() and nextDue()", () => {
     const { scheduler } = makeScheduler();
     await scheduler.add({
       id: "once",
+      timezone: "UTC",
       rule: {
-        kind: "once",
+        kind: "instant",
         startOn: Date.UTC(2026, 4, 11),
         timeSpan: { type: "duration", ms: HOUR },
       },
@@ -283,8 +285,9 @@ describe("Scheduler — next() and nextDue()", () => {
     });
     await scheduler.add({
       id: "once",
+      timezone: "UTC",
       rule: {
-        kind: "once",
+        kind: "instant",
         startOn: Date.UTC(2026, 4, 13, 12),
         timeSpan: { type: "duration", ms: HOUR },
       },
@@ -303,12 +306,13 @@ describe("Scheduler — timeSpan normalization", () => {
     const { scheduler, port } = makeScheduler();
     await scheduler.add({
       id: "fire",
-      rule: { kind: "once", startOn: Date.UTC(2026, 4, 11, 14) }, // no timeSpan
+      timezone: "UTC",
+      rule: { kind: "instant", startOn: Date.UTC(2026, 4, 11, 14) }, // no timeSpan
       payload: { type: "cron", command: "ping" },
     });
     // Stored template's rule should now have timeSpan: { type: "duration", ms: 1 }.
     const stored = await port.getTemplate("fire");
-    expect(stored?.rule.kind === "once" && stored.rule.timeSpan).toEqual({
+    expect(stored?.rule.kind === "instant" && stored.rule.timeSpan).toEqual({
       type: "duration",
       ms: 1,
     });
@@ -323,7 +327,8 @@ describe("Scheduler — timeSpan normalization", () => {
     await expect(
       scheduler.add({
         id: "bad",
-        rule: { kind: "once", startOn: 0, timeSpan: { type: "duration", ms: 0 } },
+        timezone: "UTC",
+        rule: { kind: "instant", startOn: 0, timeSpan: { type: "duration", ms: 0 } },
         payload: { type: "cron", command: "x" },
       })
     ).rejects.toThrow(/timeSpan\.ms must be >= 1/);
@@ -336,6 +341,7 @@ describe("Scheduler — write-side validation", () => {
     await expect(
       scheduler.add({
         id: "bad",
+        timezone: "UTC",
         rule: {
           kind: "anchored",
           anchorDate: 0,
@@ -352,6 +358,7 @@ describe("Scheduler — write-side validation", () => {
     const { scheduler } = makeScheduler();
     await scheduler.add({
       id: "tpl-1",
+      timezone: "UTC",
       rule: {
         kind: "anchored",
         anchorDate: 0,
@@ -375,6 +382,105 @@ describe("Scheduler — write-side validation", () => {
         },
       })
     ).rejects.toThrow(/week/);
+  });
+
+  test("add throws on unknown disambiguation", async () => {
+    const { scheduler } = makeScheduler();
+    await expect(
+      scheduler.add({
+        id: "bad-dis",
+        timezone: "America/Denver",
+        // biome-ignore lint/suspicious/noExplicitAny: testing a runtime-invalid value
+        disambiguation: "nonsense" as any,
+        rule: { kind: "instant", startOn: 0 },
+        payload: { type: "cron", command: "x" },
+      })
+    ).rejects.toThrow(/disambiguation/);
+  });
+
+  test("add throws on unknown timezone", async () => {
+    const { scheduler } = makeScheduler();
+    await expect(
+      scheduler.add({
+        id: "bad-tz",
+        timezone: "America/Denvr", // typo
+        rule: { kind: "instant", startOn: 0 },
+        payload: { type: "cron", command: "x" },
+      })
+    ).rejects.toThrow(/timezone/i);
+  });
+
+  test("add throws on missing/empty timezone", async () => {
+    const { scheduler } = makeScheduler();
+    await expect(
+      scheduler.add({
+        id: "no-tz",
+        // biome-ignore lint/suspicious/noExplicitAny: testing a runtime-invalid value
+        timezone: undefined as any,
+        rule: { kind: "instant", startOn: 0 },
+        payload: { type: "cron", command: "x" },
+      })
+    ).rejects.toThrow(/timezone is required/);
+  });
+
+  test("update throws on unknown timezone", async () => {
+    const { scheduler } = makeScheduler();
+    await scheduler.add({
+      id: "tz-1",
+      timezone: "UTC",
+      rule: { kind: "instant", startOn: 0 },
+      payload: { type: "cron", command: "x" },
+    });
+    await expect(scheduler.update({ id: "tz-1", timezone: "Not/AZone" })).rejects.toThrow(
+      /timezone/i
+    );
+  });
+});
+
+describe("Scheduler — disambiguation threads through to generators", () => {
+  // A daily 02:30 event across the 2026-03-08 Denver spring-forward gap, where
+  // 02:30 doesn't exist. The template-level disambiguation should drive how
+  // that day resolves. Window: just Mar 8 in UTC terms.
+  const dayWindowStart = Date.UTC(2026, 2, 8, 6); // 06:00Z (Mar 7 23:00 MST)
+  const dayWindowEnd = Date.UTC(2026, 2, 9, 6);
+
+  function dailyAt0230(): ScheduleTemplate<CronPayload> {
+    return {
+      id: "daily",
+      timezone: "America/Denver",
+      rule: {
+        kind: "daysOfWeek",
+        days: [
+          Day.Sunday,
+          Day.Monday,
+          Day.Tuesday,
+          Day.Wednesday,
+          Day.Thursday,
+          Day.Friday,
+          Day.Saturday,
+        ],
+        weekInterval: 1,
+        timeOfDay: 2 * HOUR + 30 * 60_000,
+        seriesStart: Date.UTC(2026, 2, 1),
+        seriesEnd: null,
+      },
+      payload: { type: "cron", command: "x" },
+    };
+  }
+
+  test("default (compatible) moves the gap occurrence forward to 09:30Z", async () => {
+    const { scheduler } = makeScheduler();
+    await scheduler.add(dailyAt0230());
+    const events = await scheduler.list(dayWindowStart, dayWindowEnd);
+    expect(events).toHaveLength(1);
+    expect(new Date(events[0].startTimestamp).toISOString()).toBe("2026-03-08T09:30:00.000Z");
+  });
+
+  test("skip drops the nonexistent gap occurrence", async () => {
+    const { scheduler } = makeScheduler();
+    await scheduler.add({ ...dailyAt0230(), disambiguation: "skip" });
+    const events = await scheduler.list(dayWindowStart, dayWindowEnd);
+    expect(events).toHaveLength(0);
   });
 });
 
@@ -408,8 +514,9 @@ describe("Scheduler — list with empty window", () => {
     const { scheduler } = makeScheduler();
     await scheduler.add({
       id: "once",
+      timezone: "UTC",
       rule: {
-        kind: "once",
+        kind: "instant",
         startOn: Date.UTC(2026, 4, 11),
         timeSpan: { type: "duration", ms: HOUR },
       },
@@ -762,13 +869,13 @@ describe("Scheduler — hourSpan across DST", () => {
     expect(new Date(events[0].endTimestamp).toISOString()).toBe("2026-05-05T06:00:00.000Z");
   });
 
-  test("hourSpan on Once without tz = hours * 3_600_000", async () => {
+  test("hourSpan on Instant in UTC = hours * 3_600_000 (no DST to flex)", async () => {
     const { scheduler } = makeScheduler();
     await scheduler.add({
       id: "once",
-      // no timezone
+      timezone: "UTC",
       rule: {
-        kind: "once",
+        kind: "instant",
         startOn: Date.UTC(2026, 4, 11, 12),
         timeSpan: { type: "hourSpan", hours: 2 },
       },

@@ -1,5 +1,12 @@
-import type { MonthsOfYearRule } from "../types";
-import { addMonthsInTz, computeSpanEnd, monthLength, utcToWallParts, wallTimeToUtc } from "../tz";
+import type { Disambiguation, MonthsOfYearRule } from "../types";
+import {
+  addMonthsInTz,
+  computeSpanEnd,
+  isNonexistentWallTime,
+  monthLength,
+  utcToWallParts,
+  wallTimeToUtc,
+} from "../tz";
 import {
   MAX_OCCURRENCES_PER_GENERATE,
   type Occurrence,
@@ -18,7 +25,8 @@ export function generateMonthsOfYear(
   rule: MonthsOfYearRule,
   tz: string | undefined,
   windowStart: number,
-  windowEnd: number
+  windowEnd: number,
+  disambiguation: Disambiguation = "compatible"
 ): Occurrence[] {
   if (rule.yearInterval <= 0) {
     throw new Error(`MonthsOfYearRule.yearInterval must be > 0 (got ${rule.yearInterval})`);
@@ -72,7 +80,20 @@ export function generateMonthsOfYear(
           const targetDay = _nthWeekdayOfMonth(yp.year, month, dow, week);
           if (targetDay == null) continue; // Nth doesn't exist this month
 
-          const occStart = wallTimeToUtc(yp.year, month, targetDay, rule.timeOfDay, tz);
+          if (
+            disambiguation === "skip" &&
+            isNonexistentWallTime(yp.year, month, targetDay, rule.timeOfDay, tz)
+          ) {
+            continue;
+          }
+          const occStart = wallTimeToUtc(
+            yp.year,
+            month,
+            targetDay,
+            rule.timeOfDay,
+            tz,
+            disambiguation
+          );
           const occEnd = computeSpanEnd(occStart, rule.timeSpan, tz);
 
           if (occStart < rule.seriesStart) continue;

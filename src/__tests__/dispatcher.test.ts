@@ -46,17 +46,20 @@ describe("Dispatcher — catch-up on start", () => {
     // Add three events at known offsets from T0.
     await scheduler.add({
       id: "e1",
-      rule: { kind: "once", startOn: T0 + 1 * HOUR },
+      timezone: "UTC",
+      rule: { kind: "instant", startOn: T0 + 1 * HOUR },
       payload: { type: "cron", command: "1" },
     });
     await scheduler.add({
       id: "e2",
-      rule: { kind: "once", startOn: T0 + 2 * HOUR },
+      timezone: "UTC",
+      rule: { kind: "instant", startOn: T0 + 2 * HOUR },
       payload: { type: "cron", command: "2" },
     });
     await scheduler.add({
       id: "e3",
-      rule: { kind: "once", startOn: T0 + 5 * HOUR },
+      timezone: "UTC",
+      rule: { kind: "instant", startOn: T0 + 5 * HOUR },
       payload: { type: "cron", command: "3" },
     });
 
@@ -81,7 +84,8 @@ describe("Dispatcher — catch-up on start", () => {
     // Event 1 hour before T0 — would fire if cursor were earlier than T0.
     await scheduler.add({
       id: "past",
-      rule: { kind: "once", startOn: T0 - HOUR },
+      timezone: "UTC",
+      rule: { kind: "instant", startOn: T0 - HOUR },
       payload: { type: "cron", command: "past" },
     });
 
@@ -110,7 +114,8 @@ describe("Dispatcher — live firing", () => {
 
     await scheduler.add({
       id: "soon",
-      rule: { kind: "once", startOn: T0 + HOUR },
+      timezone: "UTC",
+      rule: { kind: "instant", startOn: T0 + HOUR },
       payload: { type: "cron", command: "ping" },
     });
 
@@ -139,7 +144,8 @@ describe("Dispatcher — wake on add (the race)", () => {
     // Initial event 5 hours out from T0.
     await scheduler.add({
       id: "later",
-      rule: { kind: "once", startOn: T0 + 5 * HOUR },
+      timezone: "UTC",
+      rule: { kind: "instant", startOn: T0 + 5 * HOUR },
       payload: { type: "cron", command: "later" },
     });
 
@@ -160,7 +166,8 @@ describe("Dispatcher — wake on add (the race)", () => {
     // notifies; dispatcher wakes from its sleep and re-queries nextDue.
     await scheduler.add({
       id: "sooner",
-      rule: { kind: "once", startOn: T0 + 1 * HOUR },
+      timezone: "UTC",
+      rule: { kind: "instant", startOn: T0 + 1 * HOUR },
       payload: { type: "cron", command: "sooner" },
     });
     // Let microtasks settle (the wake is sync but the loop is async).
@@ -186,12 +193,14 @@ describe("Dispatcher — failure handling", () => {
 
     await scheduler.add({
       id: "bad",
-      rule: { kind: "once", startOn: T0 + HOUR },
+      timezone: "UTC",
+      rule: { kind: "instant", startOn: T0 + HOUR },
       payload: { type: "cron", command: "boom" },
     });
     await scheduler.add({
       id: "good",
-      rule: { kind: "once", startOn: T0 + 2 * HOUR },
+      timezone: "UTC",
+      rule: { kind: "instant", startOn: T0 + 2 * HOUR },
       payload: { type: "cron", command: "ok" },
     });
 
@@ -226,12 +235,14 @@ describe("Dispatcher — stop()", () => {
 
     await scheduler.add({
       id: "a",
-      rule: { kind: "once", startOn: T0 + HOUR },
+      timezone: "UTC",
+      rule: { kind: "instant", startOn: T0 + HOUR },
       payload: { type: "cron", command: "a" },
     });
     await scheduler.add({
       id: "b",
-      rule: { kind: "once", startOn: T0 + 2 * HOUR },
+      timezone: "UTC",
+      rule: { kind: "instant", startOn: T0 + 2 * HOUR },
       payload: { type: "cron", command: "b" },
     });
 
@@ -272,7 +283,8 @@ describe("Dispatcher — cursor persistence", () => {
 
     await scheduler.add({
       id: "e1",
-      rule: { kind: "once", startOn: T0 + HOUR },
+      timezone: "UTC",
+      rule: { kind: "instant", startOn: T0 + HOUR },
       payload: { type: "cron", command: "1" },
     });
 

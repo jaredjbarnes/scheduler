@@ -1,21 +1,22 @@
-import type { Day, TimeSpan } from "./types";
+import type { Day, Disambiguation, TimeSpan } from "./types";
+
+const DAY_MS = 86_400_000;
 
 // Timezone math built on Intl.DateTimeFormat (zero deps). All public functions
 // take and return UTC epoch ms; `tz` is an IANA name (or "UTC", or omitted).
 //
 // The hard direction is wall-time → UTC, because Intl only gives us UTC →
-// wall. We solve it with the standard double-correction trick: guess by
-// treating the wall instant as UTC, read the offset there, correct, then
-// re-read the offset (which may differ across a DST boundary) and correct
-// again. Two passes converge for any single-rule jurisdiction.
+// wall. We enumerate the candidate instants for a wall time by probing the
+// zone offset one day before and one day after (which brackets any single DST
+// transition), then keep the candidates that round-trip back to the input
+// wall time. That yields 1 instant normally, 0 in a spring-forward gap, or 2
+// in a fall-back overlap — the same approach Temporal uses.
 //
-// Spring-forward "non-existent" wall times (e.g. 02:30 on the morning the
-// clock skips from 02:00 → 03:00 in MDT) and fall-back "ambiguous" times
-// resolve to the EARLIER UTC instant — i.e. we treat the wall fields with
-// the pre-transition offset. This matches Luxon and date-fns-tz defaults
-// and falls out naturally from the double-correction algorithm. Consumers
-// who care about the disambiguation should snap timeOfDay outside the
-// affected hour.
+// A `disambiguation` policy then picks among them (see the Disambiguation type
+// in types.ts). The default, "compatible", sends a gap to the LATER instant
+// and an overlap to the EARLIER instant — matching Temporal / the JS Date
+// constructor / most operating systems. "skip" is handled by callers via
+// isNonexistentWallTime(); wallTimeToUtc treats it as "compatible".
 
 export interface WallParts {
   year: number;
@@ -46,6 +47,17 @@ function _formatter(tz: string): Intl.DateTimeFormat {
     _formatterCache.set(tz, f);
   }
   return f;
+}
+
+// Is `tz` an IANA zone name (or "UTC") the runtime recognizes? Constructing an
+// Intl.DateTimeFormat with an unknown zone throws RangeError; we probe for that.
+export function isValidTimeZone(tz: string): boolean {
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: tz }).format();
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export function utcToWallParts(utcEpochMs: number, tz = "UTC"): WallParts {
@@ -102,21 +114,79 @@ function _offsetMsAt(utcEpochMs: number, tz: string): number {
   return wallAsUtc - utcEpochMs;
 }
 
+// The instants that a wall time could map to in `tz`, plus the bracketing
+// offsets. `valid` has length 1 normally, 0 in a spring-forward gap, or 2 in a
+// fall-back overlap (sorted ascending).
+function _possibleInstants(
+  localUtc: number,
+  tz: string
+): { valid: number[]; offBefore: number; offAfter: number } {
+  const offBefore = _offsetMsAt(localUtc - DAY_MS, tz);
+  const offAfter = _offsetMsAt(localUtc + DAY_MS, tz);
+  const valid: number[] = [];
+  const offsets = offBefore === offAfter ? [offBefore] : [offBefore, offAfter];
+  for (const off of offsets) {
+    const epoch = localUtc - off;
+    // Keep this candidate only if it reads back as the wall time we asked for
+    // (a gap's candidates won't; an overlap's both will).
+    const w = utcToWallParts(epoch, tz);
+    const back = Date.UTC(w.year, w.month, w.day, w.hour, w.minute, w.second) + w.ms;
+    if (back === localUtc && !valid.includes(epoch)) valid.push(epoch);
+  }
+  valid.sort((a, b) => a - b);
+  return { valid, offBefore, offAfter };
+}
+
+// Is this wall time nonexistent (in a spring-forward gap) in `tz`? Used by the
+// "skip" disambiguation to drop occurrences whose wall time doesn't exist.
+export function isNonexistentWallTime(
+  year: number,
+  month: number,
+  day: number,
+  msOfDay: number,
+  tz: string | undefined
+): boolean {
+  if (tz == null || tz === "UTC") return false;
+  const localUtc = Date.UTC(year, month, day) + msOfDay;
+  return _possibleInstants(localUtc, tz).valid.length === 0;
+}
+
 export function wallTimeToUtc(
   year: number,
   month: number, // 0-indexed
   day: number,
   msOfDay: number, // 0..86_399_999, ms since wall-clock midnight
-  tz = "UTC"
+  tz = "UTC",
+  disambiguation: Disambiguation = "compatible"
 ): number {
   if (tz === "UTC") {
     return Date.UTC(year, month, day) + msOfDay;
   }
-  const wallAsUtc = Date.UTC(year, month, day) + msOfDay;
-  const offset1 = _offsetMsAt(wallAsUtc, tz);
-  const guess = wallAsUtc - offset1;
-  const offset2 = _offsetMsAt(guess, tz);
-  return wallAsUtc - offset2;
+  const localUtc = Date.UTC(year, month, day) + msOfDay;
+  const { valid, offBefore, offAfter } = _possibleInstants(localUtc, tz);
+
+  if (valid.length === 1) return valid[0];
+
+  if (valid.length === 2) {
+    // Fall-back overlap. compatible/earlier/skip → earlier; later → later.
+    if (disambiguation === "reject") {
+      throw new Error(
+        `Ambiguous wall time ${new Date(localUtc).toISOString().slice(0, 19)} in '${tz}' (fall-back overlap) with disambiguation "reject"`
+      );
+    }
+    return disambiguation === "later" ? valid[1] : valid[0];
+  }
+
+  // Spring-forward gap (valid.length === 0). earlier → the earlier instant
+  // (post-transition offset); compatible/later/skip → the later instant.
+  // ("skip" only reaches here defensively — callers pre-check via
+  // isNonexistentWallTime; we resolve it like "compatible".)
+  if (disambiguation === "reject") {
+    throw new Error(
+      `Nonexistent wall time ${new Date(localUtc).toISOString().slice(0, 19)} in '${tz}' (spring-forward gap) with disambiguation "reject"`
+    );
+  }
+  return disambiguation === "earlier" ? localUtc - offAfter : localUtc - offBefore;
 }
 
 export function dayOfWeekInTz(utcEpochMs: number, tz = "UTC"): Day {
