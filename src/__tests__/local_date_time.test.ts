@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
-import { generateLocalDateTime } from "../generators/local_date_time";
-import type { LocalDateTimeRule } from "../types";
+import { generateLocalDateTime } from "../generators/local_date_time.js";
+import type { LocalDateTimeRule } from "../types.js";
 
 const HOUR = 3_600_000;
 

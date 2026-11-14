@@ -1,7 +1,7 @@
-import { intersects } from "./generators/types";
-import type { KeyedOccurrence } from "./occurrence_key";
-import type { Alteration, ScheduledEvent } from "./types";
-import { computeSpanEnd } from "./tz";
+import { intersects } from "./generators/types.js";
+import type { KeyedOccurrence } from "./occurrence_key.js";
+import type { Alteration, ScheduledEvent } from "./types.js";
+import { computeSpanEnd } from "./tz.js";
 
 // Apply a template's alterations to its base occurrences and emit the final
 // ScheduledEvents.

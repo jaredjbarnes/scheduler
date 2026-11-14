@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
-import { generateMonthsOfYear } from "../generators/months_of_year";
-import { Day, Month, type MonthsOfYearRule } from "../types";
+import { generateMonthsOfYear } from "../generators/months_of_year.js";
+import { Day, Month, type MonthsOfYearRule } from "../types.js";
 
 const HOUR = 3_600_000;
 

@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { Dispatcher } from "../dispatcher";
-import { InMemoryDispatcherStore } from "../dispatcher_store";
-import { InMemorySchedulerPort } from "../in_memory_port";
-import { Scheduler } from "../scheduler";
-import type { ScheduledEvent } from "../types";
+import { Dispatcher } from "../dispatcher.js";
+import { InMemoryDispatcherStore } from "../dispatcher_store.js";
+import { InMemorySchedulerPort } from "../in_memory_port.js";
+import { Scheduler } from "../scheduler.js";
+import type { ScheduledEvent } from "../types.js";
 
 interface CronPayload {
   type: "cron";

@@ -1,7 +1,7 @@
-import type { IEventSubscription } from "@j13b/state/core";
-import { type DispatcherStore, InMemoryDispatcherStore } from "./dispatcher_store";
-import type { Scheduler } from "./scheduler";
-import type { ScheduledEvent } from "./types";
+import type { IEventSubscription } from "@j13b/state";
+import { type DispatcherStore, InMemoryDispatcherStore } from "./dispatcher_store.js";
+import type { Scheduler } from "./scheduler.js";
+import type { ScheduledEvent } from "./types.js";
 
 // Default safety-net wait when nothing is scheduled. The Scheduler.changed
 // event normally wakes us as soon as something gets added, so this is just

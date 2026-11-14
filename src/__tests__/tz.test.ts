@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { Day } from "../types";
+import { Day } from "../types.js";
 import {
   addDaysInTz,
   addMonthsInTz,
@@ -7,7 +7,7 @@ import {
   monthLength,
   utcToWallParts,
   wallTimeToUtc,
-} from "../tz";
+} from "../tz.js";
 
 // Reference moments:
 //   2025-03-09 09:00 UTC = 2025-03-09 02:00 MST = 03:00 MDT (the gap)

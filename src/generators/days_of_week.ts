@@ -1,4 +1,4 @@
-import type { DaysOfWeekRule, Disambiguation } from "../types";
+import type { DaysOfWeekRule, Disambiguation } from "../types.js";
 import {
   addDaysInTz,
   computeSpanEnd,
@@ -6,13 +6,13 @@ import {
   isNonexistentWallTime,
   utcToWallParts,
   wallTimeToUtc,
-} from "../tz";
+} from "../tz.js";
 import {
   MAX_OCCURRENCES_PER_GENERATE,
   type Occurrence,
   TooManyOccurrencesError,
   intersects,
-} from "./types";
+} from "./types.js";
 
 // Iterate week-by-week (in wall time, in tz) starting from seriesStart's
 // week. For each scheduled week, emit the occurrences that fall on the

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
-import { generateWeeksOfMonth } from "../generators/weeks_of_month";
-import { Day, type WeeksOfMonthRule } from "../types";
+import { generateWeeksOfMonth } from "../generators/weeks_of_month.js";
+import { Day, type WeeksOfMonthRule } from "../types.js";
 
 const HOUR = 3_600_000;
 

@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
-import { InMemorySchedulerPort } from "../in_memory_port";
-import { Scheduler } from "../scheduler";
-import { Day, type ScheduleTemplate } from "../types";
+import { InMemorySchedulerPort } from "../in_memory_port.js";
+import { Scheduler } from "../scheduler.js";
+import { Day, type ScheduleTemplate } from "../types.js";
 
 interface CronPayload {
   type: "cron";

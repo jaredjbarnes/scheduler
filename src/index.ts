@@ -1,8 +1,8 @@
-export { Scheduler } from "./scheduler";
-export { InMemorySchedulerPort } from "./in_memory_port";
-export type { SchedulerPort } from "./port";
-export { Dispatcher, type DispatcherConfig } from "./dispatcher";
-export { type DispatcherStore, InMemoryDispatcherStore } from "./dispatcher_store";
+export { Scheduler } from "./scheduler.js";
+export { InMemorySchedulerPort } from "./in_memory_port.js";
+export type { SchedulerPort } from "./port.js";
+export { Dispatcher, type DispatcherConfig } from "./dispatcher.js";
+export { type DispatcherStore, InMemoryDispatcherStore } from "./dispatcher_store.js";
 export {
   Day,
   Month,
@@ -21,4 +21,4 @@ export {
   type ScheduledEvent,
   type TimeSpan,
   type Disambiguation,
-} from "./types";
+} from "./types.js";

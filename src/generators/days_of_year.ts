@@ -1,11 +1,11 @@
-import type { DaysOfYearRule, Disambiguation } from "../types";
-import { computeSpanEnd, isNonexistentWallTime, utcToWallParts, wallTimeToUtc } from "../tz";
+import type { DaysOfYearRule, Disambiguation } from "../types.js";
+import { computeSpanEnd, isNonexistentWallTime, utcToWallParts, wallTimeToUtc } from "../tz.js";
 import {
   MAX_OCCURRENCES_PER_GENERATE,
   type Occurrence,
   TooManyOccurrencesError,
   intersects,
-} from "./types";
+} from "./types.js";
 
 // Day-of-year recurrence. Day 1 = Jan 1. Day 366 only exists in leap
 // years and is SKIPPED in non-leap years (no clamp — "366th day" means

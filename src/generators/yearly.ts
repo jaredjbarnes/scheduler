@@ -1,17 +1,17 @@
-import type { Disambiguation, YearlyRule } from "../types";
+import type { Disambiguation, YearlyRule } from "../types.js";
 import {
   computeSpanEnd,
   isNonexistentWallTime,
   monthLength,
   utcToWallParts,
   wallTimeToUtc,
-} from "../tz";
+} from "../tz.js";
 import {
   MAX_OCCURRENCES_PER_GENERATE,
   type Occurrence,
   TooManyOccurrencesError,
   intersects,
-} from "./types";
+} from "./types.js";
 
 // Simple yearly recurrence: a single month + day. Day clamps to month
 // length (Feb 29 → Feb 28 in non-leap years, Apr 31 → Apr 30, etc.).

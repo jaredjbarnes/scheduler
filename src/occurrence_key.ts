@@ -1,5 +1,5 @@
-import type { Occurrence } from "./generators/types";
-import { utcToWallParts } from "./tz";
+import type { Occurrence } from "./generators/types.js";
+import { utcToWallParts } from "./tz.js";
 
 // A key identifies a specific occurrence within a template's series. It must
 // be:

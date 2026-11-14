@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
-import { generateDaysOfWeek } from "../generators/days_of_week";
-import { Day, type DaysOfWeekRule } from "../types";
-import { utcToWallParts } from "../tz";
+import { generateDaysOfWeek } from "../generators/days_of_week.js";
+import { Day, type DaysOfWeekRule } from "../types.js";
+import { utcToWallParts } from "../tz.js";
 
 const HOUR = 3_600_000;
 

@@ -1,4 +1,4 @@
-import type { Alteration, ScheduleTemplate } from "./types";
+import type { Alteration, ScheduleTemplate } from "./types.js";
 
 // Storage adapter for the Scheduler. The Scheduler is pure logic over this
 // port; consumers implement it against whatever backing store they want

@@ -1,4 +1,4 @@
-import type { Disambiguation, WeeksOfMonthRule } from "../types";
+import type { Disambiguation, WeeksOfMonthRule } from "../types.js";
 import {
   addMonthsInTz,
   computeSpanEnd,
@@ -6,13 +6,13 @@ import {
   monthLength,
   utcToWallParts,
   wallTimeToUtc,
-} from "../tz";
+} from "../tz.js";
 import {
   MAX_OCCURRENCES_PER_GENERATE,
   type Occurrence,
   TooManyOccurrencesError,
   intersects,
-} from "./types";
+} from "./types.js";
 
 // "Nth Tuesday of every month", "last Friday of every other month", etc.
 // Iterate month-by-month at monthInterval cadence; for each repeatable day,
