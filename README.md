@@ -63,6 +63,7 @@ See [`src/index.ts`](./src/index.ts) for the full export list. Notable types:
 
 - `RecurrenceRule` — discriminated union over the nine rule kinds.
 - `ScheduleTemplate` — `{ id, rule, timezone, disambiguation?, payload }`. `timezone` is required and validated at write time (use `"UTC"` for zone-free scheduling; it's ignored by the absolute `instant`/`anchored` rules).
+- `validateRule(rule)` — checks a rule's whole shape (every required field present, typed and in range; no fields its kind lacks) and throws an `Error` naming the field and the form it expects. `Scheduler.add`/`update` run it, so a rule from JSON or an LLM fails with a clear message instead of crashing a generator. `validateTimeSpan` and `RULE_KINDS` are exported too.
 - `ScheduledEvent` — `{ templateId, occurrenceKey, startTimestamp, endTimestamp, payload, alterationId? }`.
 - `Disambiguation` — DST-edge resolution policy: `"compatible" | "earlier" | "later" | "reject" | "skip"`.
 - `SchedulerPort` — async storage interface; an `InMemorySchedulerPort` ships with the package.

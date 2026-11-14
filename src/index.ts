@@ -22,3 +22,4 @@ export {
   type TimeSpan,
   type Disambiguation,
 } from "./types.js";
+export { RULE_KINDS, validateRule, validateTimeSpan } from "./validate_rule.js";

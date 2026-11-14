@@ -21,6 +21,7 @@ import type {
   TimeSpan,
 } from "./types.js";
 import { isValidTimeZone } from "./tz.js";
+import { validateRule, validateTimeSpan } from "./validate_rule.js";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 // Search horizon for next() / nextDue() before giving up. Five years covers
@@ -185,7 +186,7 @@ export class Scheduler<TPayload extends { type: string }> {
     newTimeSpan?: TimeSpan,
     payloadOverride?: Partial<TPayload>
   ): Promise<string> {
-    if (newTimeSpan != null) _validateTimeSpan(newTimeSpan);
+    if (newTimeSpan != null) validateTimeSpan(newTimeSpan);
     const id = `alt-${templateId}-${occurrenceKey}-${Date.now()}`;
     await this._removeExistingAlteration(templateId, occurrenceKey);
     const alt: Alteration<TPayload> = {
@@ -277,138 +278,6 @@ export class Scheduler<TPayload extends { type: string }> {
 
 // ─── Validation ───────────────────────────────────────────────
 
-export function validateRule(rule: RecurrenceRule): void {
-  switch (rule.kind) {
-    case "instant":
-      _validateTimeSpan(rule.timeSpan);
-      return;
-    case "localDateTime":
-      if (!Number.isInteger(rule.year)) {
-        throw new Error("LocalDateTimeRule.year must be an integer");
-      }
-      if (rule.month < 0 || rule.month > 11) {
-        throw new Error("LocalDateTimeRule.month must be in 0..11");
-      }
-      if (rule.day < 1 || rule.day > 31) throw new Error("LocalDateTimeRule.day must be in 1..31");
-      _validateTimeOfDay(rule.timeOfDay);
-      _validateTimeSpan(rule.timeSpan);
-      return;
-    case "anchored":
-      if (rule.intervalMs <= 0) throw new Error("AnchoredRule.intervalMs must be > 0");
-      _validateTimeSpan(rule.timeSpan);
-      _validateSeries(rule.seriesStart, rule.seriesEnd, rule.count);
-      return;
-    case "daysOfWeek":
-      if (rule.weekInterval <= 0) throw new Error("DaysOfWeekRule.weekInterval must be > 0");
-      if (rule.days.length === 0) throw new Error("DaysOfWeekRule.days must be non-empty");
-      _validateTimeOfDay(rule.timeOfDay);
-      _validateTimeSpan(rule.timeSpan);
-      _validateSeries(rule.seriesStart, rule.seriesEnd, rule.count);
-      return;
-    case "weeksOfMonth":
-      if (rule.monthInterval <= 0) throw new Error("WeeksOfMonthRule.monthInterval must be > 0");
-      if (rule.weeks.length === 0) throw new Error("WeeksOfMonthRule.weeks must be non-empty");
-      for (const w of rule.weeks) {
-        if (w === 0 || w < -5 || w > 5) {
-          throw new Error("WeeksOfMonthRule.weeks entries must be in [-5..-1] or [1..5]");
-        }
-      }
-      if (rule.days.length === 0) throw new Error("WeeksOfMonthRule.days must be non-empty");
-      _validateTimeOfDay(rule.timeOfDay);
-      _validateTimeSpan(rule.timeSpan);
-      _validateSeries(rule.seriesStart, rule.seriesEnd, rule.count);
-      return;
-    case "monthsOfYear":
-      if (rule.yearInterval <= 0) throw new Error("MonthsOfYearRule.yearInterval must be > 0");
-      if (rule.months.length === 0) throw new Error("MonthsOfYearRule.months must be non-empty");
-      for (const m of rule.months) {
-        if (m < 0 || m > 11) {
-          throw new Error("MonthsOfYearRule.months entries must be in 0..11");
-        }
-      }
-      if (rule.weeks.length === 0) throw new Error("MonthsOfYearRule.weeks must be non-empty");
-      for (const w of rule.weeks) {
-        if (w === 0 || w < -5 || w > 5) {
-          throw new Error("MonthsOfYearRule.weeks entries must be in [-5..-1] or [1..5]");
-        }
-      }
-      if (rule.days.length === 0) throw new Error("MonthsOfYearRule.days must be non-empty");
-      _validateTimeOfDay(rule.timeOfDay);
-      _validateTimeSpan(rule.timeSpan);
-      _validateSeries(rule.seriesStart, rule.seriesEnd, rule.count);
-      return;
-    case "yearly":
-      if (rule.yearInterval <= 0) throw new Error("YearlyRule.yearInterval must be > 0");
-      if (rule.month < 0 || rule.month > 11) {
-        throw new Error("YearlyRule.month must be in 0..11");
-      }
-      if (rule.day < 1 || rule.day > 31) throw new Error("YearlyRule.day must be in 1..31");
-      _validateTimeOfDay(rule.timeOfDay);
-      _validateTimeSpan(rule.timeSpan);
-      _validateSeries(rule.seriesStart, rule.seriesEnd, rule.count);
-      return;
-    case "daysOfMonth":
-      if (rule.yearInterval <= 0) throw new Error("DaysOfMonthRule.yearInterval must be > 0");
-      if (rule.months.length === 0) throw new Error("DaysOfMonthRule.months must be non-empty");
-      for (const m of rule.months) {
-        if (m < 0 || m > 11) {
-          throw new Error("DaysOfMonthRule.months entries must be in 0..11");
-        }
-      }
-      if (rule.daysOfMonth.length === 0) {
-        throw new Error("DaysOfMonthRule.daysOfMonth must be non-empty");
-      }
-      for (const d of rule.daysOfMonth) {
-        if (d < 1 || d > 31) {
-          throw new Error("DaysOfMonthRule.daysOfMonth entries must be in 1..31");
-        }
-      }
-      _validateTimeOfDay(rule.timeOfDay);
-      _validateTimeSpan(rule.timeSpan);
-      _validateSeries(rule.seriesStart, rule.seriesEnd, rule.count);
-      return;
-    case "daysOfYear":
-      if (rule.yearInterval <= 0) throw new Error("DaysOfYearRule.yearInterval must be > 0");
-      if (rule.daysOfYear.length === 0) {
-        throw new Error("DaysOfYearRule.daysOfYear must be non-empty");
-      }
-      for (const d of rule.daysOfYear) {
-        if (d < 1 || d > 366) {
-          throw new Error("DaysOfYearRule.daysOfYear entries must be in 1..366");
-        }
-      }
-      _validateTimeOfDay(rule.timeOfDay);
-      _validateTimeSpan(rule.timeSpan);
-      _validateSeries(rule.seriesStart, rule.seriesEnd, rule.count);
-      return;
-    default: {
-      const _exhaustive: never = rule;
-      throw new Error(`Unknown rule kind: ${JSON.stringify(_exhaustive)}`);
-    }
-  }
-}
-
-// Validates the TimeSpan shape. Throws on { type: "duration", ms < 1 } or
-// { type: "hourSpan", hours <= 0 }. Undefined is valid (defaults to 1ms).
-function _validateTimeSpan(span: TimeSpan | undefined): void {
-  if (span == null) return;
-  if (span.type === "duration") {
-    if (span.ms < 1) {
-      throw new Error(`timeSpan.ms must be >= 1 if supplied (got ${span.ms})`);
-    }
-    return;
-  }
-  if (span.type === "hourSpan") {
-    if (!Number.isFinite(span.hours) || span.hours <= 0) {
-      throw new Error(`timeSpan.hours must be > 0 (got ${span.hours})`);
-    }
-    return;
-  }
-  // Exhaustiveness — TS will flag a missing case if TimeSpan grows.
-  const _exhaustive: never = span;
-  throw new Error(`Unknown TimeSpan type: ${JSON.stringify(_exhaustive)}`);
-}
-
 // Returns a copy of `rule` with timeSpan defaulted when omitted, so
 // generators don't have to handle undefined repeatedly.
 function _normalizeRule(rule: RecurrenceRule): RecurrenceRule {
@@ -440,21 +309,6 @@ function _validateDisambiguation(d: Disambiguation | undefined): void {
       `Unknown disambiguation '${d}' (expected one of ${_DISAMBIGUATIONS.join(", ")})`
     );
   }
-}
-
-function _validateTimeOfDay(ms: number): void {
-  if (ms < 0 || ms >= 24 * 60 * 60 * 1000) {
-    throw new Error(`timeOfDay must be in [0, 86_400_000) (got ${ms})`);
-  }
-}
-
-function _validateSeries(
-  start: number,
-  end: number | null,
-  count: number | null | undefined
-): void {
-  if (end != null && end <= start) throw new Error("seriesEnd must be > seriesStart");
-  if (count != null && count < 0) throw new Error("count must be >= 0");
 }
 
 function _rulesEqual(a: RecurrenceRule, b: RecurrenceRule): boolean {

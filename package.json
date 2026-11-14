@@ -1,6 +1,6 @@
 {
   "name": "@j13b/scheduler",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A timezone-aware recurrence and dispatch engine: a pure-data rule DSL, IANA timezones, DST-aware generators and a cron-style dispatcher.",
   "license": "MIT",
   "author": "Jared J Barnes",
@@ -21,7 +21,13 @@
     },
     "./package.json": "./package.json"
   },
-  "files": ["dist", "src", "tsconfig.json", "LICENSE", "README.md"],
+  "files": [
+    "dist",
+    "src",
+    "tsconfig.json",
+    "LICENSE",
+    "README.md"
+  ],
   "scripts": {
     "build": "vite build && node scripts/build-cjs.mjs",
     "check:types": "tsc --noEmit",
