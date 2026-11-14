@@ -1,17 +1,17 @@
-import type { DaysOfMonthRule, Disambiguation } from "../types";
+import type { DaysOfMonthRule, Disambiguation } from "../types.js";
 import {
   computeSpanEnd,
   isNonexistentWallTime,
   monthLength,
   utcToWallParts,
   wallTimeToUtc,
-} from "../tz";
+} from "../tz.js";
 import {
   MAX_OCCURRENCES_PER_GENERATE,
   type Occurrence,
   TooManyOccurrencesError,
   intersects,
-} from "./types";
+} from "./types.js";
 
 // Numerical date-based recurrence: months × daysOfMonth. Days clamp per
 // month (day 31 in April → Apr 30, day 29 in Feb non-leap → Feb 28).

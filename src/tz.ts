@@ -1,4 +1,4 @@
-import type { Day, Disambiguation, TimeSpan } from "./types";
+import type { Day, Disambiguation, TimeSpan } from "./types.js";
 
 const DAY_MS = 86_400_000;
 

@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
-import { applyAlterations } from "../alterations";
-import { type KeyedOccurrence, assignOccurrenceKeys } from "../occurrence_key";
-import type { Alteration } from "../types";
+import { applyAlterations } from "../alterations.js";
+import { type KeyedOccurrence, assignOccurrenceKeys } from "../occurrence_key.js";
+import type { Alteration } from "../types.js";
 
 interface CronPayload {
   type: "cron";

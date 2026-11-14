@@ -1,6 +1,6 @@
-import type { Disambiguation, LocalDateTimeRule } from "../types";
-import { computeSpanEnd, isNonexistentWallTime, monthLength, wallTimeToUtc } from "../tz";
-import { type Occurrence, intersects } from "./types";
+import type { Disambiguation, LocalDateTimeRule } from "../types.js";
+import { computeSpanEnd, isNonexistentWallTime, monthLength, wallTimeToUtc } from "../tz.js";
+import { type Occurrence, intersects } from "./types.js";
 
 // A single occurrence expressed in wall-clock terms, resolved through the
 // template timezone (DST-aware). `day` clamps to the month length. When tz is

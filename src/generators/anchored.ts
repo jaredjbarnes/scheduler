@@ -1,11 +1,11 @@
-import type { AnchoredRule } from "../types";
-import { computeSpanEnd } from "../tz";
+import type { AnchoredRule } from "../types.js";
+import { computeSpanEnd } from "../tz.js";
 import {
   MAX_OCCURRENCES_PER_GENERATE,
   type Occurrence,
   TooManyOccurrencesError,
   intersects,
-} from "./types";
+} from "./types.js";
 
 // Anchored is tz-independent for STEPPING (every occurrence is exactly
 // intervalMs ms from the anchor), but tz can still affect the end-of-

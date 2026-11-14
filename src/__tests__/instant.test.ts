@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
-import { generateInstant } from "../generators/instant";
-import type { InstantRule } from "../types";
+import { generateInstant } from "../generators/instant.js";
+import type { InstantRule } from "../types.js";
 
 describe("generateInstant", () => {
   const rule: InstantRule = {

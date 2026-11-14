@@ -1,4 +1,4 @@
-import type { Disambiguation, MonthsOfYearRule } from "../types";
+import type { Disambiguation, MonthsOfYearRule } from "../types.js";
 import {
   addMonthsInTz,
   computeSpanEnd,
@@ -6,13 +6,13 @@ import {
   monthLength,
   utcToWallParts,
   wallTimeToUtc,
-} from "../tz";
+} from "../tz.js";
 import {
   MAX_OCCURRENCES_PER_GENERATE,
   type Occurrence,
   TooManyOccurrencesError,
   intersects,
-} from "./types";
+} from "./types.js";
 
 // Positional yearly recurrence — top of the positional cascade.
 // (months × weeks-of-month × weekdays, with yearInterval as cadence.)

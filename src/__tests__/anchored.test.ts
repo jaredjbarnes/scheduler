@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
-import { generateAnchored } from "../generators/anchored";
-import type { AnchoredRule } from "../types";
+import { generateAnchored } from "../generators/anchored.js";
+import type { AnchoredRule } from "../types.js";
 
 const HOUR = 3_600_000;
 const DAY = 24 * HOUR;

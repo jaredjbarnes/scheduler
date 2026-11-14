@@ -1,5 +1,5 @@
-import type { SchedulerPort } from "./port";
-import type { Alteration, ScheduleTemplate } from "./types";
+import type { SchedulerPort } from "./port.js";
+import type { Alteration, ScheduleTemplate } from "./types.js";
 
 // Reference port. Stores templates and alterations in plain Maps. Returns
 // deep-cloned copies so callers can't mutate internal state.

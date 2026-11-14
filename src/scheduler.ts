@@ -1,17 +1,17 @@
-import { Event, type IEventBroadcast } from "@j13b/state/core";
-import { applyAlterations } from "./alterations";
-import { generateAnchored } from "./generators/anchored";
-import { generateDaysOfMonth } from "./generators/days_of_month";
-import { generateDaysOfWeek } from "./generators/days_of_week";
-import { generateDaysOfYear } from "./generators/days_of_year";
-import { generateInstant } from "./generators/instant";
-import { generateLocalDateTime } from "./generators/local_date_time";
-import { generateMonthsOfYear } from "./generators/months_of_year";
-import type { Occurrence } from "./generators/types";
-import { generateWeeksOfMonth } from "./generators/weeks_of_month";
-import { generateYearly } from "./generators/yearly";
-import { assignOccurrenceKeys } from "./occurrence_key";
-import type { SchedulerPort } from "./port";
+import { Event, type IEventBroadcast } from "@j13b/state";
+import { applyAlterations } from "./alterations.js";
+import { generateAnchored } from "./generators/anchored.js";
+import { generateDaysOfMonth } from "./generators/days_of_month.js";
+import { generateDaysOfWeek } from "./generators/days_of_week.js";
+import { generateDaysOfYear } from "./generators/days_of_year.js";
+import { generateInstant } from "./generators/instant.js";
+import { generateLocalDateTime } from "./generators/local_date_time.js";
+import { generateMonthsOfYear } from "./generators/months_of_year.js";
+import type { Occurrence } from "./generators/types.js";
+import { generateWeeksOfMonth } from "./generators/weeks_of_month.js";
+import { generateYearly } from "./generators/yearly.js";
+import { assignOccurrenceKeys } from "./occurrence_key.js";
+import type { SchedulerPort } from "./port.js";
 import type {
   Alteration,
   Disambiguation,
@@ -19,8 +19,8 @@ import type {
   ScheduleTemplate,
   ScheduledEvent,
   TimeSpan,
-} from "./types";
-import { isValidTimeZone } from "./tz";
+} from "./types.js";
+import { isValidTimeZone } from "./tz.js";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 // Search horizon for next() / nextDue() before giving up. Five years covers
